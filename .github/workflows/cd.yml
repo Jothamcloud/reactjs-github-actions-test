@@ -8,46 +8,36 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout Code
+        uses: actions/checkout@v2
 
-    - name: Deploy to Server
-      env:
-        PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Set the private key from GitHub Secrets
-      run: |
-        # Write the private key to a temporary file
-        echo "$PRIVATE_KEY" > private_key
-        chmod 600 private_key
+      - name: Install JFrog CLI
+        run: curl -fL https://getcli.jfrog.io | sh
 
-        # SSH into the server using the private key
-        ssh -o StrictHostKeyChecking=no -i private_key ubuntu@174.129.103.108 << 'EOF'
-          # Step 1: Update packages and ensure nginx and unzip are installed
-          sudo apt-get update
-          sudo apt-get install -y nginx unzip
+      - name: Configure JFrog CLI
+        run: |
+          ./jfrog rt config --url ${{ secrets.JFROG_URL }} \
+                            --user ${{ secrets.JFROG_USERNAME }} \
+                            --password ${{ secrets.JFROG_PASSWORD }}
 
-          # Step 2: Download artifact from JFrog
-          echo "Downloading artifact from: ${{ secrets.JFROG_URL }}/artifactory/local/builds/react-app/build-${{ github.event.workflow_run_id }}/"
-          curl -u${{ secrets.JFROG_USERNAME }}:${{ secrets.JFROG_PASSWORD }} -L \
-            "${{ secrets.JFROG_URL }}/artifactory/local/builds/react-app/build-${{ github.event.workflow_run_id }}/" -o build.zip
+      - name: Download artifact from JFrog
+        run: |
+          # Download the zip artifact
+          ./jfrog rt download "local/builds/react-app/build-${{ github.event.workflow_run.id }}/build.zip" .
 
-          # Step 3: Unzip downloaded artifact
-          if [ -f build.zip ]; then
-            unzip -o build.zip -d build/
-          else
-            echo "Download failed or file does not exist."
-            exit 1
-          fi
+      - name: Unzip artifact
+        run: |
+          # Unzip the downloaded artifact
+          unzip build.zip -d build
 
-          # Step 4: Move the downloaded files to the deployment directory
-          mv build/* /var/www/myapp/ || { echo "Move failed"; exit 1; }
-
-          # Step 5: Restart Nginx to apply changes
-          sudo nginx -t && sudo systemctl restart nginx || { echo "Nginx restart failed"; exit 1; }
-        EOF
-
-        # Clean up by removing the private key file
-        rm private_key
+      - name: Deploy Application
+        run: |
+          # Move into the build directory and start your application
+          cd build
+          # Replace the following line with your deployment command
+          # e.g., npm start, pm2 start, etc.
+          echo "Deploying the application..."
