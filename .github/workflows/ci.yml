@@ -5,21 +5,38 @@ on:
     branches: [ main ]
 
 jobs:
-  build-and-test:
+  build-and-upload:
     runs-on: self-hosted
-    # if: contains(github.event.head_commit.message, '[CI]')
 
     steps:
     - uses: actions/checkout@v2
+    
     - name: Use Node.js
       uses: actions/setup-node@v2
       with:
         node-version: 'v18.12'
+
     - name: Install pnpm
       run: npm install -g pnpm
+    
     - name: Install dependencies
       run: pnpm install
+    
     - name: Run tests
       run: pnpm test
+    
     - name: Build
       run: pnpm build
+    
+    - name: Install JFrog CLI
+      run: curl -fL https://getcli.jfrog.io | sh
+
+    - name: Configure JFrog CLI
+      run: |
+        ./jfrog rt config --url ${{ secrets.JFROG_URL }} \
+                          --user ${{ secrets.JFROG_USERNAME }} \
+                          --password ${{ secrets.JFROG_PASSWORD }}
+
+    - name: Upload artifact to JFrog
+      run: |
+        ./jfrog rt upload "build/*" "local/builds/react-app/1.0.0/"
