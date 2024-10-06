@@ -17,31 +17,64 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key.pem
           chmod 600 private_key.pem
 
+      - name: Install JFrog CLI
+        run: |
+          curl -fL https://getcli.jfrog.io | sh
+          echo "$HOME/.jfrog" >> $GITHUB_PATH
+
+      - name: Configure JFrog CLI
+        run: |
+          jfrog config add artifactory \
+            --url ${{ secrets.JFROG_URL }} \
+            --user ${{ secrets.JFROG_USERNAME }} \
+            --password ${{ secrets.JFROG_PASSWORD }} \
+            --interactive=false
+
+      - name: List JFrog contents
+        run: |
+          jfrog rt search "local/builds/react-app/build-${{ github.event.workflow_run.id }}/"
+
+      - name: Download artifact from JFrog
+        run: |
+          jfrog rt dl \
+            --url="${{ secrets.JFROG_URL }}" \
+            --user="${{ secrets.JFROG_USERNAME }}" \
+            --password="${{ secrets.JFROG_PASSWORD }}" \
+            "local/builds/react-app/build-${{ github.event.workflow_run.id }}/build.zip" . \
+            --detailed-summary || {
+              echo "JFrog download failed, exiting.";
+              exit 1;
+            }
+
+      - name: Verify download
+        run: |
+          if [ ! -f build.zip ]; then
+            echo "build.zip not found after download."
+            exit 1
+          fi
+
       - name: SSH into the server and deploy
         run: |
           ssh -i private_key.pem -o StrictHostKeyChecking=no ubuntu@174.129.103.108 << 'EOF'
+            set -e  # Exit immediately if a command exits with a non-zero status
+
             # Navigate to the app directory and clean up old files
             cd /var/www/myapp
             sudo rm -rf build
 
-            # Install JFrog CLI if not installed
-            if ! command -v jfrog &> /dev/null
-            then
-              echo "JFrog CLI not found, installing..."
-              curl -fL https://getcli.jfrog.io | sh
+            # Check if build.zip exists in the current directory
+            if [ ! -f build.zip ]; then
+              echo "build.zip not found in the current directory."
+              exit 1
             fi
 
-            # Download the latest build artifact from JFrog
-            ./jfrog rt dl "local/builds/react-app/build-${{ github.run_id }}/build.zip" . || {
-              echo "Download failed, exiting.";
-              exit 1;
-            }
-
             # Unzip the artifact and move it to the proper location
-            unzip build.zip || {
-              echo "Unzip failed, exiting.";
-              exit 1;
-            }
+            unzip -o build.zip
+            if [ ! -d build ]; then
+              echo "build directory not found after unzipping."
+              exit 1
+            fi
+
             mv build/* .
 
             # Restart the nginx server
@@ -49,7 +82,10 @@ jobs:
               echo "Failed to restart nginx, check the configuration.";
               exit 1;
             }
+
+            echo "Deployment completed successfully"
           EOF
 
-      - name: Clean up private key
-        run: rm private_key.pem
+      - name: Clean up
+        run: |
+          rm -f private_key.pem build.zip
