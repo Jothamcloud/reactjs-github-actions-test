@@ -39,10 +39,26 @@ jobs:
 
       - name: Zip build artifacts
         run: |
-          # Create a zip file of the build artifacts
-          zip -r build.zip build/*
+          # Check if the build directory exists and contains files
+          if [ -d "build" ] && [ "$(ls -A build)" ]; then
+            zip -r build.zip build/*
+            echo "Build artifacts zipped successfully."
+          else
+            echo "Build directory is empty or does not exist."
+            exit 1
+          fi
 
       - name: Upload artifact to JFrog
         run: |
-          # Upload the zipped build artifact with a unique name based on the GitHub run ID
-          ./jfrog rt upload "build.zip" "local/builds/react-app/build-${{ github.run_id }}/build.zip"
+          # Check if the zip file was created
+          if [ -f "build.zip" ]; then
+            # Upload the zipped build artifact with a unique name based on the GitHub run ID
+            ./jfrog rt upload "build.zip" "local/builds/react-app/build-${{ github.run_id }}/build.zip" || {
+              echo "JFrog upload failed, exiting.";
+              exit 1;
+            }
+            echo "Build artifact uploaded successfully to JFrog."
+          else
+            echo "build.zip does not exist, cannot upload.";
+            exit 1
+          fi
