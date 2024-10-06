@@ -16,8 +16,15 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Deploy to Server
+      env:
+        PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Set the private key from GitHub Secrets
       run: |
-        ssh -o StrictHostKeyChecking=no ubuntu@174.129.103.108 << 'EOF'
+        # Write the private key to a temporary file
+        echo "$PRIVATE_KEY" > private_key
+        chmod 600 private_key
+
+        # SSH into the server using the private key
+        ssh -o StrictHostKeyChecking=no -i private_key ubuntu@174.129.103.108 << 'EOF'
           # Step 1: Update packages and ensure nginx and unzip are installed
           sudo apt-get update
           sudo apt-get install -y nginx unzip
@@ -41,3 +48,6 @@ jobs:
           # Step 5: Restart Nginx to apply changes
           sudo nginx -t && sudo systemctl restart nginx || { echo "Nginx restart failed"; exit 1; }
         EOF
+
+        # Clean up by removing the private key file
+        rm private_key
