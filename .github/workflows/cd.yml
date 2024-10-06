@@ -30,7 +30,7 @@ jobs:
           sudo apt-get install -y nginx unzip
 
           # Step 2: Download artifact from JFrog
-          echo "Downloading artifact from: ${{ secrets.JFROG_URL }}/artifactory/local/builds/react-app/build-${{ github.event.workflow_run.head_run_id }}/"
+          echo "Downloading artifact from: ${{ secrets.JFROG_URL }}/artifactory/local/builds/react-app/build-${{ github.event.workflow_run_id }}/"
           curl -u${{ secrets.JFROG_USERNAME }}:${{ secrets.JFROG_PASSWORD }} -L \
             "${{ secrets.JFROG_URL }}/artifactory/local/builds/react-app/build-${{ github.event.workflow_run.head_run_id }}/" -o build.zip
 

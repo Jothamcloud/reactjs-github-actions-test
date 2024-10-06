@@ -37,7 +37,12 @@ jobs:
                             --user ${{ secrets.JFROG_USERNAME }} \
                             --password ${{ secrets.JFROG_PASSWORD }}
 
+      - name: Zip build artifacts
+        run: |
+          # Create a zip file of the build artifacts
+          zip -r build.zip build/*
+
       - name: Upload artifact to JFrog
         run: |
-          # Upload the build artifact with a unique name based on the GitHub run ID
-          ./jfrog rt upload "build/*" "local/builds/react-app/build-${{ github.run_id }}/"
+          # Upload the zipped build artifact with a unique name based on the GitHub run ID
+          ./jfrog rt upload "build.zip" "local/builds/react-app/build-${{ github.run_id }}/"
