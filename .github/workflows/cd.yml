@@ -19,7 +19,7 @@ jobs:
 
       - name: SSH into the server and deploy
         run: |
-          ssh -i private_key.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.REMOTE_SERVER_IP }} << 'EOF'
+          ssh -i private_key.pem -o StrictHostKeyChecking=no ${{ secrets.REMOTE_SERVER_USERNAME }}@${{ secrets.REMOTE_SERVER_IP }} << 'EOF'
             cd /var/www/myapp
             sudo rm -rf build
 
