@@ -36,7 +36,7 @@ jobs:
 
             # Step 3: Download the build artifact using the github.run_id from the CI pipeline
             curl -u${{ secrets.JFROG_USERNAME }}:${{ secrets.JFROG_PASSWORD }} -O \
-              "${{ secrets.JFROG_URL }}/artifactory/local/builds/react-app/${{ github.event.workflow_run.head_run_id }}/build.zip"
+              "${{ secrets.JFROG_URL }}/artifactory/local/builds/react-app/${{ github.event.workflow_run.head_run_id }}/"
             
             # Step 4: Clean the current build directory and extract the new one
             rm -rf ./*
