@@ -1,47 +1,40 @@
-# .github/workflows/cd.yml
-
 name: CD
 
 on:
   workflow_run:
-    workflows: ["CI"]  # Trigger this CD pipeline after the CI workflow
+    workflows: ["CI"]
     types:
       - completed
 
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}  # Only run if CI succeeded
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
-      - name: Checkout the code
-        uses: actions/checkout@v2
-
-      - name: Start SSH Agent
-        uses: webfactory/ssh-agent@v0.5.3
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
       - name: Deploy application on remote server
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@174.129.103.108 << 'EOF'
-            # Step 1: Install necessary packages (nginx, unzip)
+            # Step 1: Install necessary packages (nginx)
             sudo apt-get update
-            sudo apt-get install -y nginx unzip
+            sudo apt-get install -y nginx
 
             # Step 2: Ensure the app directory exists
             sudo mkdir -p /var/www/myapp
             sudo chown ubuntu:ubuntu /var/www/myapp
             cd /var/www/myapp
 
-            # Step 3: Download the build artifact using the github.run_id from the CI pipeline
-            curl -u${{ secrets.JFROG_USERNAME }}:${{ secrets.JFROG_PASSWORD }} -O \
-              "${{ secrets.JFROG_URL }}/artifactory/local/builds/react-app/${{ github.event.workflow_run.head_run_id }}/"
-            
-            # Step 4: Clean the current build directory and extract the new one
+            # Step 3: Download all files from JFrog using curl
+            echo "Downloading artifact from: ${{ secrets.JFROG_URL }}/artifactory/local/builds/react-app/build-${{ github.event.workflow_run.head_run_id }}/"
+            curl -u${{ secrets.JFROG_USERNAME }}:${{ secrets.JFROG_PASSWORD }} -O -J -L \
+              "${{ secrets.JFROG_URL }}/artifactory/local/builds/react-app/build-${{ github.event.workflow_run.head_run_id }}/"
+
+            # Step 4: Clean the current build directory
             rm -rf ./*
 
-            # Step 5: Configure Nginx to serve the React app
+            # Step 5: Move downloaded files to the correct directory (no extraction needed)
+            mv /path/to/downloaded/files/* /var/www/myapp/
+
+            # Step 6: Configure Nginx to serve the React app
             sudo bash -c 'cat > /etc/nginx/sites-available/myapp << EOF
             server {
                 listen 80;
@@ -49,17 +42,18 @@ jobs:
 
                 location / {
                     root /var/www/myapp/build;
+                    index index.html;
                     try_files \$uri \$uri/ /index.html;
                 }
             }
             EOF'
 
-            # Step 6: Enable the new Nginx configuration
+            # Step 7: Enable the new Nginx configuration
             sudo ln -sf /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/
 
-            # Step 7: Test the Nginx configuration
+            # Step 8: Test the Nginx configuration
             sudo nginx -t
 
-            # Step 8: Restart Nginx to apply changes
+            # Step 9: Restart Nginx to apply changes
             sudo systemctl restart nginx
           EOF
