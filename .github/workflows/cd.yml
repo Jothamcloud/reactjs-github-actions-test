@@ -40,7 +40,6 @@ jobs:
             
             # Step 4: Clean the current build directory and extract the new one
             rm -rf ./*
-            unzip build.zip -d .
 
             # Step 5: Configure Nginx to serve the React app
             sudo bash -c 'cat > /etc/nginx/sites-available/myapp << EOF
