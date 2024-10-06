@@ -29,7 +29,10 @@ jobs:
             fi
 
             # Download the latest build artifact from JFrog using curl
-            curl -u "${{ secrets.JFROG_USERNAME }}:${{ secrets.JFROG_PASSWORD }}" -O "https://${{ secrets.JFROG_URL }}/local/builds/react-app/build-${{ github.event.workflow_run.id }}/build.zip"
+            curl -u "${{ secrets.JFROG_USERNAME }}:${{ secrets.JFROG_PASSWORD }}" \
+                 -O "${{ secrets.JFROG_URL }}/local/builds/react-app/build-${{ github.event.workflow_run.id }}/build.zip" || {
+                 echo "Download failed, exiting.";
+                 exit 1;
 
             # Unzip the artifact and move it to the proper location
             unzip build.zip
