@@ -36,14 +36,14 @@ jobs:
                  exit 1;
             }
 
-            # Unzip the artifact into the /var/www/myapp directory
-            unzip build.zip -d build || {
+            # Unzip the artifact into the correct directory
+            unzip build.zip || {
               echo "Unzip failed, exiting.";
               exit 1;
             }
 
-            # Ensure the new files are in the right directory structure
-            sudo mv build /var/www/myapp/
+            # Move contents from the nested build folder to /var/www/myapp/build
+            sudo mv build/build/* /var/www/myapp/build/
 
             # Restart the nginx server
             sudo systemctl restart nginx || {
@@ -54,7 +54,6 @@ jobs:
 
       - name: Clean up private key
         run: rm private_key.pem
-
 
 
 # name: CD
