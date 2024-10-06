@@ -12,8 +12,12 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const gradientStyle = {
+    background: `linear-gradient(${gradientAngle}deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%)`
+  };
+
   return (
-    <div className="App" style={{ background: `linear-gradient(${gradientAngle}deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%)` }}>
+    <div className="App" style={gradientStyle}>
       <header className="App-header">
         <h1>Sample ReactJS-GitHub Actions Test</h1>
         <p>A responsive and dynamic landing page</p>
