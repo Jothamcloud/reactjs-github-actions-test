@@ -24,15 +24,31 @@ jobs:
             cd /var/www/myapp
             sudo rm -rf build
 
+            # Install JFrog CLI if not installed
+            if ! command -v jfrog &> /dev/null
+            then
+              echo "JFrog CLI not found, installing..."
+              curl -fL https://getcli.jfrog.io | sh
+            fi
+
             # Download the latest build artifact from JFrog
-            ./jfrog rt dl "local/builds/react-app/build-${{ github.run_id }}/build.zip" .
+            ./jfrog rt dl "local/builds/react-app/build-${{ github.run_id }}/build.zip" . || {
+              echo "Download failed, exiting.";
+              exit 1;
+            }
 
             # Unzip the artifact and move it to the proper location
-            unzip build.zip
+            unzip build.zip || {
+              echo "Unzip failed, exiting.";
+              exit 1;
+            }
             mv build/* .
 
             # Restart the nginx server
-            sudo systemctl restart nginx
+            sudo systemctl restart nginx || {
+              echo "Failed to restart nginx, check the configuration.";
+              exit 1;
+            }
           EOF
 
       - name: Clean up private key
