@@ -28,7 +28,7 @@ jobs:
             fi
 
             # Download the build artifact using the run_id from CI
-            ./jfrog rt dl "local/builds/react-app/build-${{ github.run_id }}/build.zip" . 
+            ./jfrog rt dl "local/builds/react-app/build-${{ github.event.workflow_run.id }}/build.zip" .  
             unzip build.zip
             mv build/* .
             sudo systemctl restart nginx
