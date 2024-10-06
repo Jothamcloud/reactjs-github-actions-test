@@ -12,75 +12,28 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Install SSH Key
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Write the private key to a temporary file
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
 
       - name: SSH into the server and deploy
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@174.129.103.108 << 'EOF'
-          
-          # Download the zip file artifact from JFrog
-          ./jfrog rt dl "local/builds/react-app/build-${{ github.event.workflow_run.id }}/build.zip" "build.zip"
+          ssh -i private_key.pem -o StrictHostKeyChecking=no ubuntu@174.129.103.108 << 'EOF'
+            # Navigate to the app directory and clean up old files
+            cd /var/www/myapp
+            sudo rm -rf build
 
-          # Check if the file was downloaded successfully
-          if [ ! -f "build.zip" ]; then
-            echo "Error: build.zip not found!"
-            exit 1
-          fi
+            # Download the latest build artifact from JFrog
+            ./jfrog rt dl "local/builds/react-app/build-${{ github.run_id }}/build.zip" .
 
-          # Unzip the file
-          unzip build.zip
+            # Unzip the artifact and move it to the proper location
+            unzip build.zip
+            mv build/* .
 
-          # Move build files to the web server directory and restart Nginx
-          sudo mv build/* /var/www/myapp
-          sudo systemctl restart nginx
-
+            # Restart the nginx server
+            sudo systemctl restart nginx
           EOF
 
-
-
-# name: CD
-
-# on:
-#   workflow_run:
-#     workflows: ["CI"]
-#     types:
-#       - completed
-
-# jobs:
-#   deploy:
-#     runs-on: self-hosted
-#     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-
-#     steps:
-#       - name: Checkout Code
-#         uses: actions/checkout@v2
-
-#       - name: Install JFrog CLI
-#         run: curl -fL https://getcli.jfrog.io | sh
-
-#       - name: Configure JFrog CLI
-#         run: |
-#           ./jfrog rt config --url ${{ secrets.JFROG_URL }} \
-#                             --user ${{ secrets.JFROG_USERNAME }} \
-#                             --password ${{ secrets.JFROG_PASSWORD }}
-
-#       - name: Download artifact from JFrog
-#         run: |
-#           # Download the zip artifact
-#           ./jfrog rt download "local/builds/react-app/build-${{ github.event.workflow_run.id }}/build.zip" .
-
-#       - name: Unzip artifact
-#         run: |
-#           # Unzip the downloaded artifact
-#           unzip build.zip -d build
-
-#       - name: Deploy Application
-#         run: |
-#           # Move into the build directory and start your application
-#           cd build
-#           # Replace the following line with your deployment command
-#           # e.g., npm start, pm2 start, etc.
-#           echo "Deploying the application..."
+      - name: Clean up private key
+        run: rm private_key.pem

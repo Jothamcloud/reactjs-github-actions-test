@@ -45,4 +45,4 @@ jobs:
       - name: Upload artifact to JFrog
         run: |
           # Upload the zipped build artifact with a unique name based on the GitHub run ID
-          ./jfrog rt upload "build.zip" "local/builds/react-app/build-${{ github.run_id }}/"
+          ./jfrog rt upload "build.zip" "local/builds/react-app/build-${{ github.run_id }}/build.zip"
