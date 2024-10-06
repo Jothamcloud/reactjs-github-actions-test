@@ -8,50 +8,36 @@ on:
 
 jobs:
   deploy:
+    runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    runs-on: self-hosted
 
     steps:
-      - name: Deploy application on remote server
-        run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@174.129.103.108 << 'EOF'
-            # Step 1: Install necessary packages (nginx)
-            sudo apt-get update
-            sudo apt-get install -y nginx
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-            # Step 2: Ensure the app directory exists
-            sudo mkdir -p /var/www/myapp
-            sudo chown ubuntu:ubuntu /var/www/myapp
-            cd /var/www/myapp
+    - name: Deploy to Server
+      run: |
+        ssh -o StrictHostKeyChecking=no ubuntu@174.129.103.108 << 'EOF'
+          # Step 1: Update packages and ensure nginx and unzip are installed
+          sudo apt-get update
+          sudo apt-get install -y nginx unzip
 
-            # Step 3: Download all files from JFrog using curl (ensure proper path)
-            echo "Downloading artifact from: ${{ secrets.JFROG_URL }}/artifactory/local/builds/react-app/build-${{ github.event.workflow_run.head_run_id }}/"
-            curl -u${{ secrets.JFROG_USERNAME }}:${{ secrets.JFROG_PASSWORD }} -O -J -L \
-              "${{ secrets.JFROG_URL }}/artifactory/local/builds/react-app/build-${{ github.event.workflow_run.head_run_id }}/"
+          # Step 2: Download artifact from JFrog
+          echo "Downloading artifact from: ${{ secrets.JFROG_URL }}/artifactory/local/builds/react-app/build-${{ github.event.workflow_run.head_run_id }}/"
+          curl -u${{ secrets.JFROG_USERNAME }}:${{ secrets.JFROG_PASSWORD }} -L \
+            "${{ secrets.JFROG_URL }}/artifactory/local/builds/react-app/build-${{ github.event.workflow_run.head_run_id }}/" -o build.zip
 
-            # Step 4: Move the downloaded files to the deployment directory
-            mv build/* /var/www/myapp/
-            
-            # Step 5: Fix the Nginx configuration to serve the React app
-            sudo bash -c 'cat > /etc/nginx/sites-available/myapp << EOF
-            server {
-                listen 80;
-                server_name 174.129.103.108;
+          # Step 3: Unzip downloaded artifact
+          if [ -f build.zip ]; then
+            unzip -o build.zip -d build/
+          else
+            echo "Download failed or file does not exist."
+            exit 1
+          fi
 
-                location / {
-                    root /var/www/myapp/build;
-                    index index.html;
-                    try_files \$uri \$uri/ /index.html;
-                }
-            }
-            EOF'
+          # Step 4: Move the downloaded files to the deployment directory
+          mv build/* /var/www/myapp/ || { echo "Move failed"; exit 1; }
 
-            # Step 6: Enable the new Nginx configuration
-            sudo ln -sf /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/
-
-            # Step 7: Test the Nginx configuration
-            sudo nginx -t
-
-            # Step 8: Restart Nginx to apply changes
-            sudo systemctl restart nginx
-          EOF
+          # Step 5: Restart Nginx to apply changes
+          sudo nginx -t && sudo systemctl restart nginx || { echo "Nginx restart failed"; exit 1; }
+        EOF
