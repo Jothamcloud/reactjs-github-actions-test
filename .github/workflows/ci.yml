@@ -9,34 +9,35 @@ jobs:
     runs-on: self-hosted
 
     steps:
-    - uses: actions/checkout@v2
-    
-    - name: Use Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: 'v18.12'
+      - uses: actions/checkout@v2
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 'v18.12'
 
-    - name: Install pnpm
-      run: npm install -g pnpm
-    
-    - name: Install dependencies
-      run: pnpm install
-    
-    - name: Run tests
-      run: pnpm test
-    
-    - name: Build
-      run: pnpm build
-    
-    - name: Install JFrog CLI
-      run: curl -fL https://getcli.jfrog.io | sh
+      - name: Install pnpm
+        run: npm install -g pnpm
+      
+      - name: Install dependencies
+        run: pnpm install
+      
+      - name: Run tests
+        run: pnpm test
+      
+      - name: Build
+        run: pnpm build
+      
+      - name: Install JFrog CLI
+        run: curl -fL https://getcli.jfrog.io | sh
 
-    - name: Configure JFrog CLI
-      run: |
-        ./jfrog rt config --url ${{ secrets.JFROG_URL }} \
-                          --user ${{ secrets.JFROG_USERNAME }} \
-                          --password ${{ secrets.JFROG_PASSWORD }}
+      - name: Configure JFrog CLI
+        run: |
+          ./jfrog rt config --url ${{ secrets.JFROG_URL }} \
+                            --user ${{ secrets.JFROG_USERNAME }} \
+                            --password ${{ secrets.JFROG_PASSWORD }}
 
-    - name: Upload artifact to JFrog
-      run: |
-        ./jfrog rt upload "build/*" "local/builds/react-app/1.0.0/"
+      - name: Upload artifact to JFrog
+        run: |
+          # Upload the build artifact with a unique name based on the GitHub run ID
+          ./jfrog rt upload "build/*" "local/builds/react-app/build-${{ github.run_id }}/"
