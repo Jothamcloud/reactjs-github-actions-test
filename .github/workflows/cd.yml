@@ -8,6 +8,7 @@ on:
 
 jobs:
   deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: self-hosted
 
     steps:
@@ -23,22 +24,19 @@ jobs:
             sudo chown ubuntu:ubuntu /var/www/myapp
             cd /var/www/myapp
 
-            # Step 3: Download all files from JFrog using curl
+            # Step 3: Download all files from JFrog using curl (ensure proper path)
             echo "Downloading artifact from: ${{ secrets.JFROG_URL }}/artifactory/local/builds/react-app/build-${{ github.event.workflow_run.head_run_id }}/"
             curl -u${{ secrets.JFROG_USERNAME }}:${{ secrets.JFROG_PASSWORD }} -O -J -L \
               "${{ secrets.JFROG_URL }}/artifactory/local/builds/react-app/build-${{ github.event.workflow_run.head_run_id }}/"
 
-            # Step 4: Clean the current build directory
-            rm -rf ./*
-
-            # Step 5: Move downloaded files to the correct directory (no extraction needed)
-            mv /path/to/downloaded/files/* /var/www/myapp/
-
-            # Step 6: Configure Nginx to serve the React app
+            # Step 4: Move the downloaded files to the deployment directory
+            mv build/* /var/www/myapp/
+            
+            # Step 5: Fix the Nginx configuration to serve the React app
             sudo bash -c 'cat > /etc/nginx/sites-available/myapp << EOF
             server {
                 listen 80;
-                server_name 174.129.103.108;  # Or use your domain name
+                server_name 174.129.103.108;
 
                 location / {
                     root /var/www/myapp/build;
@@ -48,12 +46,12 @@ jobs:
             }
             EOF'
 
-            # Step 7: Enable the new Nginx configuration
+            # Step 6: Enable the new Nginx configuration
             sudo ln -sf /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/
 
-            # Step 8: Test the Nginx configuration
+            # Step 7: Test the Nginx configuration
             sudo nginx -t
 
-            # Step 9: Restart Nginx to apply changes
+            # Step 8: Restart Nginx to apply changes
             sudo systemctl restart nginx
           EOF
