@@ -23,12 +23,15 @@ jobs:
             cd /var/www/myapp
             sudo rm -rf build
 
+            # Install JFrog CLI if not installed
             if ! command -v jfrog &> /dev/null; then
               curl -fL https://getcli.jfrog.io | sh
             fi
 
-            # Download the build artifact using the run_id from CI
-            ./jfrog rt dl "local/builds/react-app/build-${{ github.event.workflow_run.id }}/build.zip" .  
+            # Download the latest build artifact from JFrog using curl
+            curl -u "${{ secrets.JFROG_USERNAME }}:${{ secrets.JFROG_PASSWORD }}" -O "https://${{ secrets.JFROG_URL }}/local/builds/react-app/build-${{ github.event.workflow_run.id }}/build.zip"
+
+            # Unzip the artifact and move it to the proper location
             unzip build.zip
             mv build/* .
             sudo systemctl restart nginx
