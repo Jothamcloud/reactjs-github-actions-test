@@ -28,16 +28,28 @@ jobs:
               curl -fL https://getcli.jfrog.io | sh
             fi
 
+            # Check if the URL and download command are correct
+            echo "Downloading the latest build artifact..."
+
             # Download the latest build artifact from JFrog using curl
             curl -u "${{ secrets.JFROG_USERNAME }}:${{ secrets.JFROG_PASSWORD }}" \
                  -O "${{ secrets.JFROG_URL }}/local/builds/react-app/build-${{ github.event.workflow_run.id }}/build.zip" || {
                  echo "Download failed, exiting.";
                  exit 1;
+            }
 
             # Unzip the artifact and move it to the proper location
-            unzip build.zip
+            unzip build.zip || {
+              echo "Unzip failed, exiting.";
+              exit 1;
+            }
             mv build/* .
-            sudo systemctl restart nginx
+
+            # Restart the nginx server
+            sudo systemctl restart nginx || {
+              echo "Failed to restart nginx, check the configuration.";
+              exit 1;
+            }
           EOF
 
       - name: Clean up private key
